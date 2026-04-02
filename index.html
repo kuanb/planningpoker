@@ -609,6 +609,7 @@ function createRoom() {
     state.players[peer.id] = { name: myName, vote: null };
     state.revealed = false;
     $('roomCodeDisplay').textContent = roomCode;
+    history.replaceState(null, '', '?room=' + roomCode);
     showScreen('roomScreen');
     renderRoom();
     toast('Room created');
@@ -658,6 +659,7 @@ function joinRoom() {
       connections[hostId] = conn;
       conn.send({ type: 'join', name: myName });
       $('roomCodeDisplay').textContent = roomCode;
+      history.replaceState(null, '', '?room=' + roomCode);
       showScreen('roomScreen');
       toast('Joined room');
       $('statusPill').textContent = 'connected';
@@ -901,6 +903,15 @@ $('nameInput').addEventListener('keydown', e => {
 $('joinCodeInput').addEventListener('keydown', e => {
   if (e.key === 'Enter') joinRoom();
 });
+
+// ─── Auto-join from URL ───
+(function() {
+  const params = new URLSearchParams(window.location.search);
+  const room = params.get('room');
+  if (room) {
+    $('joinCodeInput').value = room.toUpperCase();
+  }
+})();
 </script>
 </body>
 </html>

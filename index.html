@@ -500,11 +500,15 @@
       <div class="lobby-title">Dead simple<br><em>planning poker</em></div>
       <div class="lobby-actions">
         <input type="text" id="nameInput" placeholder="your name" maxlength="20" autocomplete="off">
-        <button class="btn btn-primary" id="createBtn" onclick="createRoom()">Create Room</button>
-        <div class="divider">or join</div>
-        <div class="input-row">
-          <input type="text" id="joinCodeInput" placeholder="room code" maxlength="6" autocomplete="off" style="text-transform:uppercase; letter-spacing:2px;">
-          <button class="btn btn-secondary" onclick="joinRoom()">Join</button>
+        <div id="createSection">
+          <button class="btn btn-primary" id="createBtn" onclick="createRoom()" style="width:100%">Create Room</button>
+        </div>
+        <div class="divider" id="lobbyDivider">or join</div>
+        <div id="joinSection">
+          <div class="input-row">
+            <input type="text" id="joinCodeInput" placeholder="room code" maxlength="6" autocomplete="off" style="text-transform:uppercase; letter-spacing:2px;">
+            <button class="btn btn-secondary" id="joinBtn" onclick="joinRoom()">Join</button>
+          </div>
         </div>
       </div>
     </div>
@@ -926,9 +930,8 @@ function copyCode() {
 }
 
 // Enter key on inputs
-$('nameInput').addEventListener('keydown', e => {
-  if (e.key === 'Enter') createRoom();
-});
+function nameKeyHandler(e) { if (e.key === 'Enter') createRoom(); }
+$('nameInput').addEventListener('keydown', nameKeyHandler);
 $('joinCodeInput').addEventListener('keydown', e => {
   if (e.key === 'Enter') joinRoom();
 });
@@ -939,6 +942,17 @@ $('joinCodeInput').addEventListener('keydown', e => {
   const room = params.get('room');
   if (room) {
     $('joinCodeInput').value = room.toUpperCase();
+    // Swap order: join first, create second
+    const actions = $('joinSection').parentElement;
+    actions.insertBefore($('joinSection'), $('createSection'));
+    actions.insertBefore($('lobbyDivider'), $('createSection'));
+    $('lobbyDivider').textContent = 'or create new';
+    // Make join the primary action
+    $('joinBtn').className = 'btn btn-primary';
+    $('createBtn').className = 'btn btn-secondary';
+    // Enter key should join when room code is prefilled
+    $('nameInput').removeEventListener('keydown', nameKeyHandler);
+    $('nameInput').addEventListener('keydown', e => { if (e.key === 'Enter') joinRoom(); });
   }
 })();
 </script>

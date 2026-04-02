@@ -525,7 +525,10 @@
     <div class="players-label" id="playersLabel">Players</div>
     <div class="players-grid" id="playersGrid"></div>
 
-    <div class="section-label">Your vote</div>
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+      <div class="section-label" style="margin-bottom:0;">Your vote</div>
+      <button class="btn btn-secondary" id="scaleToggle" onclick="toggleScale()" style="padding:8px 14px; font-size:11px;">Switch to continuous</button>
+    </div>
     <div class="vote-cards" id="voteCards"></div>
 
     <div class="results-section" id="resultsSection">
@@ -542,7 +545,11 @@
 // Planning Poker — P2P via PeerJS
 // ═══════════════════════════════════════════════════════
 
-const FIBONACCI = ['0','1','2','3','5','8','13','21','34','55','89','?','☕'];
+const SCALES = {
+  fibonacci: ['0','1','2','3','5','8','13'],
+  continuous: ['0','1','2','3','4','5','6','7','8','9','10','11','12','13','14','15']
+};
+let currentScale = 'fibonacci';
 const ROOM_PREFIX = 'pokr-';
 
 let peer = null;
@@ -564,11 +571,33 @@ const $ = id => document.getElementById(id);
 
 // ─── Init vote cards ───
 function renderVoteCards() {
+  const values = SCALES[currentScale];
   const container = $('voteCards');
-  container.innerHTML = FIBONACCI.map(v =>
+  container.innerHTML = values.map(v =>
     `<button class="vote-card" data-value="${v}" onclick="castVote('${v}')">${v}</button>`
   ).join('');
+  // Update toggle button text
+  const toggle = $('scaleToggle');
+  if (toggle) toggle.textContent = currentScale === 'fibonacci' ? 'Switch to continuous' : 'Switch to Fibonacci';
 }
+
+function toggleScale() {
+  currentScale = currentScale === 'fibonacci' ? 'continuous' : 'fibonacci';
+  // Clear vote if current value isn't in new scale
+  if (myVote && !SCALES[currentScale].includes(myVote)) {
+    myVote = null;
+    if (isHost) {
+      state.players[peer.id].vote = null;
+      broadcastState();
+    } else {
+      const hostId = ROOM_PREFIX + roomCode;
+      if (connections[hostId]) connections[hostId].send({ type: 'vote', vote: null });
+    }
+  }
+  renderVoteCards();
+  renderRoom();
+}
+
 renderVoteCards();
 
 // ─── Lobby ───

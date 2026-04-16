@@ -77,7 +77,11 @@
     font-weight: 500;
     letter-spacing: -0.5px;
     color: var(--accent);
+    cursor: pointer;
+    transition: opacity 0.15s;
   }
+
+  .logo:hover { opacity: 0.75; }
 
   .logo span { color: var(--text-dim); }
 
@@ -490,7 +494,7 @@
 
 <div class="app">
   <header>
-    <div class="logo">poker<span>.planning</span></div>
+    <div class="logo" onclick="leaveRoom()" title="back to lobby">poker<span>.planning</span></div>
     <div class="status-pill" id="statusPill">peer-to-peer</div>
   </header>
 
@@ -929,12 +933,59 @@ function copyCode() {
   navigator.clipboard.writeText(roomCode).then(() => toast('Copied!'));
 }
 
+function leaveRoom() {
+  if (!peer) {
+    // Already in lobby — just clear any room param
+    if (new URLSearchParams(location.search).get('room')) {
+      history.replaceState(null, '', location.pathname);
+    }
+    return;
+  }
+  if (!confirm('Leave this room?')) return;
+
+  Object.values(connections).forEach(c => { try { c.close(); } catch(e) {} });
+  try { peer.destroy(); } catch(e) {}
+
+  peer = null;
+  connections = {};
+  isHost = false;
+  myVote = null;
+  roomCode = '';
+  revealed = false;
+  state = { players: {}, revealed: false };
+
+  history.replaceState(null, '', location.pathname);
+  $('statusPill').textContent = 'peer-to-peer';
+  $('joinCodeInput').value = '';
+  $('resultsSection').classList.remove('visible');
+
+  // Restore lobby order (create first, join second) in case URL-join reordered them
+  const actions = $('createSection').parentElement;
+  actions.insertBefore($('createSection'), $('joinSection'));
+  actions.insertBefore($('lobbyDivider'), $('joinSection'));
+  $('lobbyDivider').textContent = 'or join';
+  $('createBtn').className = 'btn btn-primary';
+  $('joinBtn').className = 'btn btn-secondary';
+  setNameHandler(nameCreateHandler);
+
+  showScreen('lobbyScreen');
+  toast('Left room');
+}
+
 // Enter key on inputs
-function nameKeyHandler(e) { if (e.key === 'Enter') createRoom(); }
-$('nameInput').addEventListener('keydown', nameKeyHandler);
+function nameCreateHandler(e) { if (e.key === 'Enter') createRoom(); }
+function nameJoinHandler(e) { if (e.key === 'Enter') joinRoom(); }
+let currentNameHandler = nameCreateHandler;
+$('nameInput').addEventListener('keydown', currentNameHandler);
 $('joinCodeInput').addEventListener('keydown', e => {
   if (e.key === 'Enter') joinRoom();
 });
+
+function setNameHandler(handler) {
+  $('nameInput').removeEventListener('keydown', currentNameHandler);
+  currentNameHandler = handler;
+  $('nameInput').addEventListener('keydown', currentNameHandler);
+}
 
 // ─── Auto-join from URL ───
 (function() {
@@ -951,8 +1002,7 @@ $('joinCodeInput').addEventListener('keydown', e => {
     $('joinBtn').className = 'btn btn-primary';
     $('createBtn').className = 'btn btn-secondary';
     // Enter key should join when room code is prefilled
-    $('nameInput').removeEventListener('keydown', nameKeyHandler);
-    $('nameInput').addEventListener('keydown', e => { if (e.key === 'Enter') joinRoom(); });
+    setNameHandler(nameJoinHandler);
   }
 })();
 </script>
